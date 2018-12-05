@@ -1,11 +1,9 @@
 import torch
 import json
-
-def prep_seq(seq, vocab):
-    return torch.tensor([vocab.word2idx[w] for w in seq], dtype=torch.long)
+import numpy as np
 
 def read_pairs(fname, v, speaker=None):
-    """Reads in conversational pairs from FB message dump"""
+    """ Reads in conversational pairs from FB message dump """
     pairs = []
     with open(fname, 'r') as f:
         data = json.loads(f.read())
@@ -28,7 +26,7 @@ SOS_TOKEN = 1 # start of sentence
 EOS_TOKEN = 2 # end of sentence
 
 class Vocab:
-    """Maps words to indices"""
+    """ Maps words to indices """
     
     def __init__(self):
         self.trimmed = False
@@ -56,7 +54,7 @@ class Vocab:
         self.size += 1
 
     def trim(self, min_count):
-        """Culls words below a count threshold"""
+        """ Culls words below a count threshold """
         if self.trimmed:
             return
 
@@ -82,7 +80,51 @@ class Vocab:
             self.add_word(old_idx2word[i])
             self.word2count[old_idx2word[i]] = old_word2count[old_idx2word[i]]
 
+def sentence2idxs(seq, vocab, max_len):
+    """ Converts sentence to index tensor with zero padding """
+    res = [vocab.word2idx[w] for w in seq.split(" ")] + [EOS_TOKEN]
+    res = res + [PAD_TOKEN] * (max_len-len(res))
 
-v = Vocab()
-pairs = read_pairs('data/message.json', v)
-        
+    return torch.tensor(res, dtype=torch.long)
+
+def pairs2batch(pairs, vocab):
+    """ Converts pairs of sentences into tensor batch """
+    in_mat, out_mat = [], []
+    len_vec = []
+    bin_mat = []
+    
+    # gets max len
+    max_len = -1
+    for s_in, s_out in pairs:
+        max_len = max( len(s_in.split()), len(s_out.split()), max_len )
+    max_len += 1
+
+    for s_in, s_out in pairs:
+        try:
+            # process input
+            in_vec = sentence2idxs(s_in, vocab, max_len)
+
+            # process output
+            out_vec = sentence2idxs(s_out, vocab, max_len)
+            bin_vec = torch.tensor(list(map(lambda x: 1 if x != PAD_TOKEN else 0, out_vec)), dtype=torch.uint8)
+
+            bin_mat.append(bin_vec.numpy())
+            in_mat.append(in_vec.numpy())
+            out_mat.append(out_vec.numpy())
+            len_vec.append((in_vec == EOS_TOKEN).nonzero().item() + 1)
+            
+        except KeyError:
+            # pass on sentence with words not in vocab
+            continue
+
+    in_mat = np.transpose(torch.LongTensor(in_mat))
+    len_vec = torch.IntTensor(len_vec)
+    out_mat = np.transpose(torch.LongTensor(out_mat))
+    bin_mat = np.transpose(torch.ByteTensor(bin_mat))
+
+    return in_mat, len_vec, out_mat, bin_mat
+
+
+vocab = Vocab()
+pairs = read_pairs('data/message.json', vocab)
+in_mat, len_vec, out_mat, bin_mat = pairs2batch(pairs, vocab)

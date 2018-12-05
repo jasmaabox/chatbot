@@ -12,15 +12,11 @@ USE_CUDA = torch.cuda.is_available()
 device = torch.device("cuda" if USE_CUDA else "cpu")
 
 # extract data
-with open("test_convo.txt", "r") as f:
-    lines = f.read().split("\n")
-
-pairs = []
-for i in range(0, len(lines)-2, 2):
-    pairs.append( (lines[i].lower(), lines[i+1].lower()) )
+vocab = Vocab()
+pairs = read_pairs('data/message.json', vocab)
 
 # === TRAIN ===
-model = Chatbot(VOCAB_SIZE, 32, 32)
+model = Chatbot(vocab.size, 32, 32)
 loss_f = nn.NLLLoss()
 optimizer = optim.SGD(model.parameters(), lr=0.01)
 
