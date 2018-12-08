@@ -43,7 +43,7 @@ def read_embeds(fname, vocab, embed_dim_size):
 
     # convert to embedding layer
     weights_matrix = np.zeros( (vocab.size, embed_dim_size) )
-    
+
     for word in vocab.word2idx:
         idx = vocab.word2idx[word]
         try:
@@ -158,15 +158,9 @@ def pairs2batch(pairs, vocab):
             # pass on sentence with words not in vocab
             continue
 
-    in_mat = torch.LongTensor(in_mat)
+    in_mat = np.transpose(torch.LongTensor(in_mat))
     len_vec = torch.IntTensor(len_vec)
-    out_mat = torch.LongTensor(out_mat)
-    bin_mat = torch.ByteTensor(bin_mat)
+    out_mat = np.transpose(torch.LongTensor(out_mat))
+    bin_mat = np.transpose(torch.ByteTensor(bin_mat))
 
     return in_mat, len_vec, out_mat, bin_mat, max_len
-
-vocab = Vocab()
-pairs = read_pairs('data/message.json', vocab)
-vocab.trim(3)
-print("pairs read")
-embedding = read_embeds('data/glove.twitter.27B/glove.twitter.27B.25d.txt', vocab, 25)

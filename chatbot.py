@@ -25,7 +25,24 @@ def maskNLLLoss(inp, target, mask):
 # extract data
 vocab = Vocab()
 pairs = read_pairs('data/message.json', vocab)
-embeds = read_embeds('data/glove.twitter.27B/glove.twitter.27B.25d.txt')
+vocab.trim(3)
+
+# read in embedding
+embedding_model_path = 'data/embedding_model'
+if embedding_model_path:
+    embedding = torch.load(embedding_model_path)
+    embedding.eval()
+else:
+    embedding = read_embeds('data/glove.twitter.27B/glove.twitter.27B.25d.txt', vocab, 25)
+    torch.save(embedding, 'data/embedding_model')
+
+MAX_LENGTH = 10
+teacher_forcing_ratio = 0.8
+BATCH_SIZE = 200
+n_iteration = 100
+learning_rate = 0.01
+decoder_lr_ratio = 5
+clip = 50
 
 # === TRAIN ===
 
@@ -96,19 +113,12 @@ def train(inputs, lengths, target, mask, max_target_len, encoder, decoder, embed
 
 # === MAIN ===
 
-MAX_LENGTH = 10
-teacher_forcing_ratio = 0.8
-BATCH_SIZE = 200
-n_iteration = 100
-learning_rate = 0.01
-decoder_lr_ratio = 5
-clip = 50
-
 # random sample for training batch
 inputs, lengths, target, mask, max_target_len = pairs2batch([random.choice(pairs) for _ in range(BATCH_SIZE)], vocab)
 
-encoder = EncoderRNN(32, embedding, 4)
-decoder = LuongAttnDecoderRNN(attn, embedding, 32, vocab.size)
+# hidden size is size of embedding = 25
+encoder = EncoderRNN(25, embedding, 4)
+decoder = LuongAttnDecoderRNN(DOT_METHOD, embedding, 25, vocab.size)
 
 encoder_optimizer = optim.Adam(encoder.parameters(), lr = learning_rate)
 decoder_optimizer = optim.Adam(decoder.parameters(), lr = learning_rate * decoder_lr_ratio)
@@ -123,14 +133,32 @@ print_loss = 0
 
 # training loop
 print("Training...")
+
+training_batches = [pairs2batch(random.sample(pairs, BATCH_SIZE), vocab) for _ in range(n_iteration)]
+
 for iteration in range(start_iteration, n_iteration + 1):
 
-    input_batch = inputs[iteration - 1]
-    length_batch = lengths[iteration - 1]
-    target_batch = target[iteration - 1]
-    mask_batch = mask[iteration - 1]
+    training_batch = training_batches[iteration-1]
+    input_batch, lengths_batch, target_batch, mask_batch, _ = training_batch
 
-    loss = train(input_batch, length_batch, target_batch, mask_batch, max_target_len, encoder, decoder, embedding, encoder_optimizer, decoder_optimizer, BATCH_SIZE, clip)
+    # re-sort in descending order
+    lengths_batch = lengths_batch.numpy()
+    input_temp = torch.LongTensor(input_batch.size())
+    target_temp = torch.LongTensor(target_batch.size())
+    mask_temp = torch.LongTensor(mask_batch.size())
+
+    for i, idx in enumerate(lengths_batch.argsort()):
+        input_temp[:, len(lengths_batch) - i - 1] = input_batch[:, idx.item()]
+        target_temp[:, len(lengths_batch) - i - 1] = target_batch[:, idx.item()]
+        mask_temp[:, len(lengths_batch) - i - 1] = mask_batch[:, idx.item()]
+
+    lengths_batch[::-1].sort()
+    lengths_batch = torch.from_numpy(lengths_batch)
+    input_batch = input_temp
+    target__batch = target_temp
+    mask__batch = mask_temp
+
+    loss = train(input_batch, lengths_batch, target_batch, mask_batch, max_target_len, encoder, decoder, embedding, encoder_optimizer, decoder_optimizer, BATCH_SIZE, clip)
     print_loss += loss
     print_loss_avg = print_loss / iteration
     print(f"Iteration {iteration}\tAverage loss{print_loss_avg}")

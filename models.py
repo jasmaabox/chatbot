@@ -22,7 +22,7 @@ class EncoderRNN(nn.Module):
         embedded = self.embedding(inputs)                                       # embed
         packed = torch.nn.utils.rnn.pack_padded_sequence(embedded, inp_lens)    # pack
         outputs, hidden = self.gru(packed, hidden)                              # forward pass thru GRU
-        outputs = torch.nn.utils.rnn.pad_packed_sequence(outputs)               # unpack
+        outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(outputs)               # unpack
 
         # sum bidir outputs?
         outputs = outputs[:,:,:self.hidden_size] + outputs[:,:,self.hidden_size:]
@@ -64,7 +64,7 @@ class Attn(nn.Module):
         attn_energies = self.score(hidden, encoder_outputs)
         attn_energies = attn_energies.t()                           # transpose
         return F.log_softmax(atten_energies, dim=1).unsqueeze(1)    # do softmax and return to original axis?
-                    
+
 
 class LuongAttnDecoderRNN(nn.Module):
     """ Luong decoder """
@@ -72,7 +72,7 @@ class LuongAttnDecoderRNN(nn.Module):
     def __init__(self, attn_model, embedding, hidden_size, output_size, n_layers=1, dropout=0.1):
         super(LuongAttnDecoderRNN, self).__init__()
 
-        self.attn_model = attn_model
+        self.attn_model = Attn(attn_model, hidden_size)
         self.hidden_size = hidden_size
         self.output_size = output_size
         self.n_layers = n_layers
@@ -84,7 +84,7 @@ class LuongAttnDecoderRNN(nn.Module):
         self.gru = nn.GRU(hidden_size, hidden_size, n_layers, dropout=(0 if n_layers==1 else dropout))
         self.concat = nn.Linear(hidden_size * 2, hidden_size)
         self.out = nn.Linear(hidden_size, output_size)
-        
+
         self.attn = Attn(attn_model, hidden_size)
 
     def forward(self, input_step, last_hidden, encoder_outputs):
@@ -133,7 +133,7 @@ class GreedySearchDecoder(nn.Module):
             decoder_scores, decoder_input = torch.max(decoder_output, dim=1)
             all_tokens = torch.cat((all_tokens, decoder_input), dim=0)
             all_scores = torch.cat((all_scores, decoder_scores), dim=0)
-            
+
             decoder_input = torch.unsqueeze(decoder_input, 0)
-            
+
         return all_tokens, all_scores
