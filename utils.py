@@ -2,6 +2,11 @@ import torch
 import torch.nn as nn
 import json
 import numpy as np
+import re
+
+def clean_word(s):
+    """ Strips words to alphanumeric """
+    return re.sub(r'[^a-zA-Z0-9_ ]+', '', s.lower())
 
 def read_pairs(fname, v, speaker=None):
     """ Reads in conversational pairs from FB message dump """
@@ -17,13 +22,15 @@ def read_pairs(fname, v, speaker=None):
         messages.reverse()
         for i in range(len(messages)):
             if i < len(messages)-1 and messages[i]['sender_name'] == speaker and messages[i+1]['sender_name'] != speaker:
-                v.add_sentence(messages[i]['content'])
-                v.add_sentence(messages[i+1]['content'])
-                pairs.append( (messages[i]['content'], messages[i+1]['content']) )
+                m1 = clean_word(messages[i]['content'])
+                m2 = clean_word(messages[i+1]['content'])
+                v.add_sentence(m1)
+                v.add_sentence(m2)
+                pairs.append( (m1, m2) )
     return pairs
 
 def read_embeds(fname, vocab, embed_dim_size):
-
+    """ Read glove embeddings and generate embedding layer """
     # get embed dict
     embed_map = {}
     with open(fname, 'r', encoding='utf8') as f:
@@ -36,6 +43,7 @@ def read_embeds(fname, vocab, embed_dim_size):
 
     # convert to embedding layer
     weights_matrix = np.zeros( (vocab.size, embed_dim_size) )
+    
     for word in vocab.word2idx:
         idx = vocab.word2idx[word]
         try:
@@ -81,7 +89,7 @@ class Vocab:
             self.word2idx[word] = self.size
             self.word2count[word] = 1
             self.idx2word[self.size] = word
-            
+
             self.size += 1
         else:
             self.word2count[word] += 1
@@ -159,5 +167,6 @@ def pairs2batch(pairs, vocab):
 
 vocab = Vocab()
 pairs = read_pairs('data/message.json', vocab)
+vocab.trim(3)
 print("pairs read")
 embedding = read_embeds('data/glove.twitter.27B/glove.twitter.27B.25d.txt', vocab, 25)
