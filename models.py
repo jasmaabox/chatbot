@@ -2,6 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from utils import *
+
+USE_CUDA = torch.cuda.is_available()
+device = torch.device("cuda" if USE_CUDA else "cpu")
+
 class EncoderRNN(nn.Module):
     """ Encode sentence to thought vec """
     def __init__(self, hidden_size, embedding, n_layers=1, dropout=0):
@@ -101,3 +106,34 @@ class LuongAttnDecoderRNN(nn.Module):
         output = self.out(concat_output)
         output = F.softmax(output, dim=1)
         return output, hidden
+
+
+class GreedySearchDecoder(nn.Module):
+    """ Gets word tokens """
+
+    def __init__(self, encoder, decoder):
+        super(GreedySearchDecoder, self).__init__()
+
+        self.encoder = encoder
+        self.decoder = decoder
+
+    def forward(self, inputs, input_length, max_length):
+        # feed thru encoder
+        encoder_outputs, encoder_hidden = self.encoder(inputs, input_length)
+        # set up decoder
+        decoder_hidden = encoder_hidden[:decoder.n_layers]
+        decoder_input = torch.ones(1, 1, device=device, dtype=torch.long) * SOS_TOKEN
+        # set up tensors to append words to
+        all_tokens = torch.zeros([0], device=device, dtype=torch.long)
+        all_scores = torch.zeros([0], device=device)
+
+        # decode word by word
+        for _ in range(max_length):
+            decoder_output, decoder_hidden = self.decoder(decoder_input, decoder_hidden, encoder_outputs)
+            decoder_scores, decoder_input = torch.max(decoder_output, dim=1)
+            all_tokens = torch.cat((all_tokens, decoder_input), dim=0)
+            all_scores = torch.cat((all_scores, decoder_scores), dim=0)
+            
+            decoder_input = torch.unsqueeze(decoder_input, 0)
+            
+        return all_tokens, all_scores

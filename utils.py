@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import json
 import numpy as np
 
@@ -21,13 +22,45 @@ def read_pairs(fname, v, speaker=None):
                 pairs.append( (messages[i]['content'], messages[i+1]['content']) )
     return pairs
 
+def read_embeds(fname, vocab, embed_dim_size):
+
+    # get embed dict
+    embed_map = {}
+    with open(fname, 'r', encoding='utf8') as f:
+        embeds = f.read().split('\n')
+
+        for l in embeds:
+            if len(l) > 0:
+                data = l.split()
+                embed_map[data[0]] = torch.FloatTensor(list(map(float, data[1:])))
+
+    # convert to embedding layer
+    weights_matrix = np.zeros( (vocab.size, embed_dim_size) )
+    for word in vocab.word2idx:
+        idx = vocab.word2idx[word]
+        try:
+            weights_matrix[idx] = embed_map[word]
+        except KeyError:
+            # generate random embedding if not in vocab
+            weights_matrix[idx] = np.random.normal(scale=0.6, size=(embed_dim_size,))
+
+    weights_matrix = torch.Tensor(weights_matrix)
+
+    # generate embedding
+    embedding = nn.Embedding(vocab.size, embed_dim_size)
+    embedding.load_state_dict({'weight':weights_matrix})
+    embedding.weight.requires_grad = False
+    return embedding
+
+
+
 PAD_TOKEN = 0 # padding
 SOS_TOKEN = 1 # start of sentence
 EOS_TOKEN = 2 # end of sentence
 
 class Vocab:
     """ Maps words to indices """
-    
+
     def __init__(self):
         self.trimmed = False
         self.word2idx = {}
@@ -35,7 +68,7 @@ class Vocab:
         self.idx2word = {
             PAD_TOKEN: "<PAD>",
             SOS_TOKEN: "<SOS>",
-            EOS_TOKEN: "<EOS>", 
+            EOS_TOKEN: "<EOS>",
         }
         self.size = 3
 
@@ -48,10 +81,10 @@ class Vocab:
             self.word2idx[word] = self.size
             self.word2count[word] = 1
             self.idx2word[self.size] = word
+            
+            self.size += 1
         else:
             self.word2count[word] += 1
-            
-        self.size += 1
 
     def trim(self, min_count):
         """ Culls words below a count threshold """
@@ -72,7 +105,7 @@ class Vocab:
         self.idx2word = {
             PAD_TOKEN: "<PAD>",
             SOS_TOKEN: "<SOS>",
-            EOS_TOKEN: "<EOS>", 
+            EOS_TOKEN: "<EOS>",
         }
         self.size = 3
 
@@ -92,7 +125,7 @@ def pairs2batch(pairs, vocab):
     in_mat, out_mat = [], []
     len_vec = []
     bin_mat = []
-    
+
     # gets max len
     max_len = -1
     for s_in, s_out in pairs:
@@ -112,19 +145,19 @@ def pairs2batch(pairs, vocab):
             in_mat.append(in_vec.numpy())
             out_mat.append(out_vec.numpy())
             len_vec.append((in_vec == EOS_TOKEN).nonzero().item() + 1)
-            
+
         except KeyError:
             # pass on sentence with words not in vocab
             continue
 
-    in_mat = np.transpose(torch.LongTensor(in_mat))
+    in_mat = torch.LongTensor(in_mat)
     len_vec = torch.IntTensor(len_vec)
-    out_mat = np.transpose(torch.LongTensor(out_mat))
-    bin_mat = np.transpose(torch.ByteTensor(bin_mat))
+    out_mat = torch.LongTensor(out_mat)
+    bin_mat = torch.ByteTensor(bin_mat)
 
-    return in_mat, len_vec, out_mat, bin_mat
-
+    return in_mat, len_vec, out_mat, bin_mat, max_len
 
 vocab = Vocab()
 pairs = read_pairs('data/message.json', vocab)
-in_mat, len_vec, out_mat, bin_mat = pairs2batch(pairs, vocab)
+print("pairs read")
+embedding = read_embeds('data/glove.twitter.27B/glove.twitter.27B.25d.txt', vocab, 25)
