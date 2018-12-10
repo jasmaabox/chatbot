@@ -64,7 +64,7 @@ class Attn(nn.Module):
     def forward(self, hidden, encoder_outputs):
         attn_energies = self.score(hidden, encoder_outputs)
         attn_energies = attn_energies.t()                           # transpose
-        return F.log_softmax(atten_energies, dim=1).unsqueeze(1)    # do softmax and return to original axis?
+        return F.log_softmax(attn_energies, dim=1).unsqueeze(1)    # do softmax and return to original axis?
 
 
 class LuongAttnDecoderRNN(nn.Module):
@@ -86,7 +86,7 @@ class LuongAttnDecoderRNN(nn.Module):
         self.concat = nn.Linear(hidden_size * 2, hidden_size)
         self.out = nn.Linear(hidden_size, output_size)
 
-        self.attn = Attn(attn_model, hidden_size)
+        self.attn = Attn(hidden_size, method=attn_model)
 
     def forward(self, input_step, last_hidden, encoder_outputs):
         """ Forward pass run step-by-step """
@@ -122,7 +122,7 @@ class GreedySearchDecoder(nn.Module):
         # feed thru encoder
         encoder_outputs, encoder_hidden = self.encoder(inputs, input_length)
         # set up decoder
-        decoder_hidden = encoder_hidden[:decoder.n_layers]
+        decoder_hidden = encoder_hidden[:self.decoder.n_layers]
         decoder_input = torch.ones(1, 1, device=device, dtype=torch.long) * SOS_TOKEN
         # set up tensors to append words to
         all_tokens = torch.zeros([0], device=device, dtype=torch.long)
