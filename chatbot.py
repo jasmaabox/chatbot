@@ -38,7 +38,7 @@ else:
 
 MAX_LENGTH = 10
 teacher_forcing_ratio = 0.8
-BATCH_SIZE = 200
+BATCH_SIZE = 10
 n_iteration = 100
 learning_rate = 0.01
 decoder_lr_ratio = 5
@@ -139,7 +139,7 @@ training_batches = [pairs2batch(random.sample(pairs, BATCH_SIZE), vocab) for _ i
 for iteration in range(start_iteration, n_iteration + 1):
 
     training_batch = training_batches[iteration-1]
-    input_batch, lengths_batch, target_batch, mask_batch, _ = training_batch
+    input_batch, lengths_batch, target_batch, mask_batch, max_target_len = training_batch
 
     # re-sort in descending order
     lengths_batch = lengths_batch.numpy()
@@ -157,6 +157,8 @@ for iteration in range(start_iteration, n_iteration + 1):
     input_batch = input_temp
     target__batch = target_temp
     mask__batch = mask_temp
+
+    print(input_batch)
 
     loss = train(input_batch, lengths_batch, target_batch, mask_batch, max_target_len, encoder, decoder, embedding, encoder_optimizer, decoder_optimizer, BATCH_SIZE, clip)
     print_loss += loss

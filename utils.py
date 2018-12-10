@@ -123,7 +123,15 @@ class Vocab:
 
 def sentence2idxs(seq, vocab, max_len):
     """ Converts sentence to index tensor with zero padding """
-    res = [vocab.word2idx[w] for w in seq.split(" ")] + [EOS_TOKEN]
+    res = []
+    for w in seq.split():
+        try:
+            res.append(vocab.word2idx[w])
+        except KeyError:
+            # replace with PAD for now
+            res.append(PAD_TOKEN)
+
+    res += [EOS_TOKEN]
     res = res + [PAD_TOKEN] * (max_len-len(res))
 
     return torch.tensor(res, dtype=torch.long)
@@ -141,22 +149,18 @@ def pairs2batch(pairs, vocab):
     max_len += 1
 
     for s_in, s_out in pairs:
-        try:
-            # process input
-            in_vec = sentence2idxs(s_in, vocab, max_len)
 
-            # process output
-            out_vec = sentence2idxs(s_out, vocab, max_len)
-            bin_vec = torch.tensor(list(map(lambda x: 1 if x != PAD_TOKEN else 0, out_vec)), dtype=torch.uint8)
+        # process input
+        in_vec = sentence2idxs(s_in, vocab, max_len)
 
-            bin_mat.append(bin_vec.numpy())
-            in_mat.append(in_vec.numpy())
-            out_mat.append(out_vec.numpy())
-            len_vec.append((in_vec == EOS_TOKEN).nonzero().item() + 1)
+        # process output
+        out_vec = sentence2idxs(s_out, vocab, max_len)
+        bin_vec = torch.tensor(list(map(lambda x: 1 if x != PAD_TOKEN else 0, out_vec)), dtype=torch.uint8)
 
-        except KeyError:
-            # pass on sentence with words not in vocab
-            continue
+        bin_mat.append(bin_vec.numpy())
+        in_mat.append(in_vec.numpy())
+        out_mat.append(out_vec.numpy())
+        len_vec.append((in_vec == EOS_TOKEN).nonzero().item() + 1)
 
     in_mat = np.transpose(torch.LongTensor(in_mat))
     len_vec = torch.IntTensor(len_vec)
