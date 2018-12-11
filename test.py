@@ -15,13 +15,12 @@ def evaluate(encoder, decoder, searcher, vocab, inp, max_length=100):
     lengths = torch.IntTensor( [len(inp.split())+1] )
     idx_batch = torch.LongTensor(idx_batch).transpose(0, 1)
 
-    print('INPUT')
-    print(idx_batch)
-
     input_batch = idx_batch.to(device)
     lengths = lengths.to(device)
 
     tokens, scores = searcher(input_batch, lengths, max_length)
+
+    print(scores)
 
     decoded_words = [vocab.idx2word[token.item()] for token in tokens]
     return " ".join(decoded_words)
@@ -40,10 +39,10 @@ embedding.eval()
 
 # load models
 encoder = EncoderRNN(25, embedding, 4)
-encoder.load_state_dict(torch.load('checkpoint/encoder-10'))
+encoder.load_state_dict(torch.load('checkpoint/encoder-20'))
 encoder.eval()
-decoder = LuongAttnDecoderRNN(DOT_METHOD, embedding, 25, vocab.size)
-decoder.load_state_dict(torch.load('checkpoint/decoder-10'))
+decoder = LuongAttnDecoderRNN(GENERAL_METHOD, embedding, 25, vocab.size)
+decoder.load_state_dict(torch.load('checkpoint/decoder-20'))
 decoder.eval()
 
 searcher = GreedySearchDecoder(encoder, decoder)

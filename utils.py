@@ -130,7 +130,7 @@ def sentence2idxs(seq, vocab, max_len):
             res.append(vocab.word2idx[w])
         except KeyError:
             # generate random for now
-            res.append(random.randint(3, vocab.size))
+            res.append(random.randint(3, vocab.size-1))
 
     res += [EOS_TOKEN]
     res = res + [PAD_TOKEN] * (max_len-len(res))
@@ -144,18 +144,21 @@ def pairs2batch(pairs, vocab):
     bin_mat = []
 
     # gets max len
-    max_len = -1
+    max_len_in = -1
+    max_len_out = -1
     for s_in, s_out in pairs:
-        max_len = max( len(s_in.split()), len(s_out.split()), max_len )
-    max_len += 1
+        max_len_in = max( len(s_in.split()), max_len_in )
+        max_len_out = max( len(s_out.split()), max_len_out )
+    max_len_in += 1
+    max_len_out += 1
 
     for s_in, s_out in pairs:
 
         # process input
-        in_vec = sentence2idxs(s_in, vocab, max_len)
+        in_vec = sentence2idxs(s_in, vocab, max_len_in)
 
         # process output
-        out_vec = sentence2idxs(s_out, vocab, max_len)
+        out_vec = sentence2idxs(s_out, vocab, max_len_out)
         bin_vec = torch.tensor(list(map(lambda x: 1 if x != PAD_TOKEN else 0, out_vec)), dtype=torch.uint8)
 
         bin_mat.append(bin_vec.numpy())
@@ -168,4 +171,4 @@ def pairs2batch(pairs, vocab):
     out_mat = np.transpose(torch.LongTensor(out_mat))
     bin_mat = np.transpose(torch.ByteTensor(bin_mat))
 
-    return in_mat, len_vec, out_mat, bin_mat, max_len
+    return in_mat, len_vec, out_mat, bin_mat, max_len_out

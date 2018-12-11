@@ -19,8 +19,6 @@ def maskNLLLoss(inp, target, mask):
     loss = cross_entropy.masked_select(mask).mean()
     loss = loss.to(device)
 
-    print(loss)
-
     return loss, n_total.item()
 
 
@@ -39,7 +37,7 @@ else:
     embedding = read_embeds('data/glove.twitter.27B/glove.twitter.27B.25d.txt', vocab, 25)
     torch.save(embedding, 'data/embedding_model')
 
-teacher_forcing_ratio = 0.3
+teacher_forcing_ratio = 0.7
 BATCH_SIZE = 200
 n_iteration = 100
 learning_rate = 0.0001
@@ -152,7 +150,7 @@ for iteration in range(start_iteration, n_iteration + 1):
     lengths_batch = lengths_batch.numpy()
     input_temp = torch.LongTensor(input_batch.size())
     target_temp = torch.LongTensor(target_batch.size())
-    mask_temp = torch.LongTensor(mask_batch.size())
+    mask_temp = torch.ByteTensor(mask_batch.size())
 
     for i, idx in enumerate(lengths_batch.argsort()):
         input_temp[:, len(lengths_batch) - i - 1] = input_batch[:, idx.item()]
@@ -162,8 +160,8 @@ for iteration in range(start_iteration, n_iteration + 1):
     lengths_batch[::-1].sort()
     lengths_batch = torch.from_numpy(lengths_batch)
     input_batch = input_temp
-    target__batch = target_temp
-    mask__batch = mask_temp
+    target_batch = target_temp
+    mask_batch = mask_temp
 
     loss = train(input_batch, lengths_batch, target_batch, mask_batch, max_target_len, encoder, decoder, embedding, encoder_optimizer, decoder_optimizer, BATCH_SIZE, clip)
     print_loss += loss
