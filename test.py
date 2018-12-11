@@ -30,7 +30,7 @@ def evaluate(encoder, decoder, searcher, vocab, inp, max_length=100):
 # === MAIN ===
 # load vocab
 vocab = Vocab()
-pairs = read_pairs('data/message.json', vocab)
+pairs = read_pairs('data/message_ex.json', vocab)
 vocab.trim(3)
 
 # read in embedding
@@ -40,10 +40,10 @@ embedding.eval()
 
 # load models
 encoder = EncoderRNN(25, embedding, 4)
-encoder.load_state_dict(torch.load('checkpoint/encoder-100'))
+encoder.load_state_dict(torch.load('checkpoint/encoder-10'))
 encoder.eval()
 decoder = LuongAttnDecoderRNN(DOT_METHOD, embedding, 25, vocab.size)
-decoder.load_state_dict(torch.load('checkpoint/decoder-100'))
+decoder.load_state_dict(torch.load('checkpoint/decoder-10'))
 decoder.eval()
 
 searcher = GreedySearchDecoder(encoder, decoder)

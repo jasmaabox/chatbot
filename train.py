@@ -27,7 +27,7 @@ def maskNLLLoss(inp, target, mask):
 # === MAIN ===
 # extract data
 vocab = Vocab()
-pairs = read_pairs('data/message.json', vocab)
+pairs = read_pairs('data/message_ex.json', vocab)
 vocab.trim(3)
 
 # read in embedding
@@ -39,8 +39,7 @@ else:
     embedding = read_embeds('data/glove.twitter.27B/glove.twitter.27B.25d.txt', vocab, 25)
     torch.save(embedding, 'data/embedding_model')
 
-MAX_LENGTH = 10
-teacher_forcing_ratio = 0.8
+teacher_forcing_ratio = 0.3
 BATCH_SIZE = 200
 n_iteration = 100
 learning_rate = 0.0001
@@ -49,7 +48,7 @@ clip = 50
 
 # === TRAIN ===
 
-def train(inputs, lengths, target, mask, max_target_len, encoder, decoder, embedding, encoder_optimizer, decoder_optimizer, batch_size, clip, max_length=MAX_LENGTH):
+def train(inputs, lengths, target, mask, max_target_len, encoder, decoder, embedding, encoder_optimizer, decoder_optimizer, batch_size, clip):
     """ Trains model """
 
     # zero grad
@@ -121,7 +120,7 @@ inputs, lengths, target, mask, max_target_len = pairs2batch([random.choice(pairs
 
 # hidden size is size of embedding = 25
 encoder = EncoderRNN(25, embedding, 4)
-decoder = LuongAttnDecoderRNN(DOT_METHOD, embedding, 25, vocab.size)
+decoder = LuongAttnDecoderRNN(GENERAL_METHOD, embedding, 25, vocab.size)
 
 encoder_optimizer = optim.Adam(encoder.parameters(), lr = learning_rate)
 decoder_optimizer = optim.Adam(decoder.parameters(), lr = learning_rate * decoder_lr_ratio)
@@ -135,6 +134,11 @@ print_loss = 0
 #    start_iteration = checkpoint['iteration'] + 1
 
 # training loop
+
+# print stats
+print("====== STATS =====")
+print(f"Vocab size:\t{vocab.size}")
+print("==================")
 print("Training...")
 
 training_batches = [pairs2batch(random.sample(pairs, BATCH_SIZE), vocab) for _ in range(n_iteration)]

@@ -3,6 +3,7 @@ import torch.nn as nn
 import json
 import numpy as np
 import re
+import random
 
 def clean_word(s):
     """ Strips words to alphanumeric """
@@ -128,8 +129,8 @@ def sentence2idxs(seq, vocab, max_len):
         try:
             res.append(vocab.word2idx[w])
         except KeyError:
-            # replace with PAD for now
-            res.append(PAD_TOKEN)
+            # generate random for now
+            res.append(random.randint(3, vocab.size))
 
     res += [EOS_TOKEN]
     res = res + [PAD_TOKEN] * (max_len-len(res))
