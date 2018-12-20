@@ -27,22 +27,26 @@ def evaluate(encoder, decoder, searcher, vocab, inp, max_length=100):
 
 
 # === MAIN ===
+
+# Load checkpoint
+checkpoint = torch.load('data/4000_checkpoint.tar')
+
 # load vocab
 vocab = Vocab()
 pairs = read_pairs('data/message_ex.json', vocab)
 vocab.trim(3)
 
 # read in embedding
-embedding_model_path = 'data/embedding_model'
-embedding = torch.load(embedding_model_path)
+embedding = nn.Embedding(vocab.size, 500)
+embedding.load_state_dict(checkpoint['embedding'])
 embedding.eval()
 
 # load models
-encoder = EncoderRNN(25, embedding, 4)
-encoder.load_state_dict(torch.load('checkpoint/encoder-20'))
+encoder = EncoderRNN(500, embedding, 2, 0.1)
+encoder.load_state_dict(checkpoint['en'])
 encoder.eval()
-decoder = LuongAttnDecoderRNN(GENERAL_METHOD, embedding, 25, vocab.size)
-decoder.load_state_dict(torch.load('checkpoint/decoder-20'))
+decoder = LuongAttnDecoderRNN(DOT_METHOD, embedding, 500, vocab.size, 2, 0.1)
+decoder.load_state_dict(checkpoint['de'])
 decoder.eval()
 
 searcher = GreedySearchDecoder(encoder, decoder)

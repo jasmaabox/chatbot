@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import random
+import os
 
 from models import *
 from utils import *
@@ -28,21 +29,17 @@ vocab = Vocab()
 pairs = read_pairs('data/message_ex.json', vocab)
 vocab.trim(3)
 
-# read in embedding
-embedding_model_path = 'data/embedding_model'
-if embedding_model_path:
-    embedding = torch.load(embedding_model_path)
-    embedding.eval()
-else:
-    embedding = read_embeds('data/glove.twitter.27B/glove.twitter.27B.25d.txt', vocab, 25)
-    torch.save(embedding, 'data/embedding_model')
-
-teacher_forcing_ratio = 0.7
-BATCH_SIZE = 200
-n_iteration = 100
+teacher_forcing_ratio = 1.0
+BATCH_SIZE = 64
+n_iteration = 4000
 learning_rate = 0.0001
-decoder_lr_ratio = 5
+decoder_lr_ratio = 5.0
 clip = 50
+HIDDEN_SIZE = 500
+n_layers = 2
+dropout = 0.1
+
+embedding = nn.Embedding(vocab.size, HIDDEN_SIZE)
 
 # === TRAIN ===
 
@@ -116,9 +113,8 @@ def train(inputs, lengths, target, mask, max_target_len, encoder, decoder, embed
 # random sample for training batch
 inputs, lengths, target, mask, max_target_len = pairs2batch([random.choice(pairs) for _ in range(BATCH_SIZE)], vocab)
 
-# hidden size is size of embedding = 25
-encoder = EncoderRNN(25, embedding, 4)
-decoder = LuongAttnDecoderRNN(GENERAL_METHOD, embedding, 25, vocab.size)
+encoder = EncoderRNN(HIDDEN_SIZE, embedding, n_layers, dropout)
+decoder = LuongAttnDecoderRNN(DOT_METHOD, embedding, HIDDEN_SIZE, vocab.size, n_layers, dropout)
 
 encoder_optimizer = optim.Adam(encoder.parameters(), lr = learning_rate)
 decoder_optimizer = optim.Adam(decoder.parameters(), lr = learning_rate * decoder_lr_ratio)
@@ -169,8 +165,14 @@ for iteration in range(start_iteration, n_iteration + 1):
     print(f"Iteration {iteration}\tAverage loss {print_loss_avg}")
 
     # save checkpoint
-    # TODO
-    # save every 10th iteration for now
-    if iteration % 10 == 0:
-        torch.save(encoder.state_dict(), f"checkpoint/encoder-{iteration}")
-        torch.save(decoder.state_dict(), f"checkpoint/decoder-{iteration}")
+    if iteration % 500 == 0:
+        torch.save({
+            'iteration': iteration,
+            'en': encoder.state_dict(),
+            'de': decoder.state_dict(),
+            'en_opt': encoder_optimizer.state_dict(),
+            'de_opt': decoder_optimizer.state_dict(),
+            'loss': loss,
+            'vocab_dict': vocab.__dict__,
+            'embedding': embedding.state_dict()
+        }, os.path.join('checkpoint', '{}_{}.tar'.format(iteration, 'checkpoint')))
