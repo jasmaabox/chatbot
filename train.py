@@ -123,11 +123,6 @@ print("Initializing...")
 start_iteration = 1
 print_loss = 0
 
-# load from file
-#if out_fname:
-#    start_iteration = checkpoint['iteration'] + 1
-
-# training loop
 
 # print stats
 print("====== STATS =====")

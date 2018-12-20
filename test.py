@@ -20,16 +20,14 @@ def evaluate(encoder, decoder, searcher, vocab, inp, max_length=100):
 
     tokens, scores = searcher(input_batch, lengths, max_length)
 
-    print(scores)
-
     decoded_words = [vocab.idx2word[token.item()] for token in tokens]
-    return " ".join(decoded_words)
+    return decoded_words
 
 
 # === MAIN ===
 
 # Load checkpoint
-checkpoint = torch.load('data/4000_checkpoint.tar')
+checkpoint = torch.load('checkpoint/4000_checkpoint.tar')
 
 # load vocab
 vocab = Vocab()
@@ -53,5 +51,12 @@ searcher = GreedySearchDecoder(encoder, decoder)
 
 while True:
     sentence = input('> ')
-    resp = evaluate(encoder, decoder, searcher, vocab, sentence)
+    words = evaluate(encoder, decoder, searcher, vocab, sentence)
+    resp = ""
+    for w in words:
+        if w == '<EOS>':
+            break
+        resp += w + " "
+    resp = resp.strip()
+
     print('BOT: '+resp)
