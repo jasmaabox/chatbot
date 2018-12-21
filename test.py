@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 import numpy as np
+import os
 
 from models import *
 from utils import *
@@ -28,6 +29,9 @@ HIDDEN_SIZE = 500
 n_layers = 2
 dropout = 0.1
 max_length = 100
+n_iteration = 4000
+checkpoint_path = 'checkpoint'
+trim_threshold = 3
 
 try:
     with open('config.json', 'r') as f:
@@ -39,17 +43,20 @@ try:
         n_layers = config['n_layers']
         dropout = config['dropout']
         max_length = config['max_length']
+        n_iteration = config['n_iteration']
+        checkpoint_path = config['checkpoint_path']
+        trim_threshold = config['trim_threshold']
         print("Read config from file.")
 except FileNotFoundError:
     print("No config file. Using default config.")
 
 # Load checkpoint
-checkpoint = torch.load('checkpoint/me/4000_checkpoint.tar')
+checkpoint = torch.load(os.path.join('checkpoint', f'{n_iteration}_checkpoint.tar'))
 
 # load vocab
 vocab = Vocab()
 pairs = read_pairs(convo_path, vocab, speaker=speaker if speaker else None)
-vocab.trim(3)
+vocab.trim(trim_threshold)
 
 # read in embedding
 embedding = nn.Embedding(vocab.size, HIDDEN_SIZE)
@@ -57,10 +64,10 @@ embedding.load_state_dict(checkpoint['embedding'])
 embedding.eval()
 
 # load models
-encoder = EncoderRNN(500, embedding, n_layers, dropout)
+encoder = EncoderRNN(HIDDEN_SIZE, embedding, n_layers, dropout)
 encoder.load_state_dict(checkpoint['en'])
 encoder.eval()
-decoder = LuongAttnDecoderRNN(DOT_METHOD, embedding, 500, vocab.size, n_layers, dropout)
+decoder = LuongAttnDecoderRNN(DOT_METHOD, embedding, HIDDEN_SIZE, vocab.size, n_layers, dropout)
 decoder.load_state_dict(checkpoint['de'])
 decoder.eval()
 

@@ -13,10 +13,10 @@ class EncoderRNN(nn.Module):
         super(EncoderRNN, self).__init__()
 
         self.hidden_size = hidden_size
-        self.embedding = embedding
+        self.embedding = embedding.to(device)
         self.n_layers = n_layers
 
-        self.gru = nn.GRU(hidden_size, hidden_size, n_layers, dropout=(0 if n_layers==1 else dropout), bidirectional=True)
+        self.gru = nn.GRU(hidden_size, hidden_size, n_layers, dropout=(0 if n_layers==1 else dropout), bidirectional=True).to(device)
 
     def forward(self, inputs, inp_lens, hidden=None):
 
@@ -43,10 +43,10 @@ class Attn(nn.Module):
         self.hidden_size = hidden_size
 
         if self.method == GENERAL_METHOD:
-            self.attn = nn.Linear(hidden_size, hidden_size)
+            self.attn = nn.Linear(hidden_size, hidden_size).to(device)
         elif self.method == CONCAT_METHOD:
-            self.attn = nn.Linear(hidden_size * 2, hidden_size)
-            self.v = nn.Parameter(torch.FloatTensor(hidden_size))
+            self.attn = nn.Linear(hidden_size * 2, hidden_size).to(device)
+            self.v = nn.Parameter(torch.FloatTensor(hidden_size)).to(device)
 
     def score(self, hidden, encoder_outputs):
         if self.method == DOT_METHOD:
@@ -80,11 +80,11 @@ class LuongAttnDecoderRNN(nn.Module):
         self.dropout = dropout
 
         # layers
-        self.embedding = embedding
-        self.embedding_dropout = nn.Dropout(dropout)
-        self.gru = nn.GRU(hidden_size, hidden_size, n_layers, dropout=(0 if n_layers==1 else dropout))
-        self.concat = nn.Linear(hidden_size * 2, hidden_size)
-        self.out = nn.Linear(hidden_size, output_size)
+        self.embedding = embedding.to(device)
+        self.embedding_dropout = nn.Dropout(dropout).to(device)
+        self.gru = nn.GRU(hidden_size, hidden_size, n_layers, dropout=(0 if n_layers==1 else dropout)).to(device)
+        self.concat = nn.Linear(hidden_size * 2, hidden_size).to(device)
+        self.out = nn.Linear(hidden_size, output_size).to(device)
 
         self.attn = Attn(hidden_size, method=attn_model)
 
