@@ -84,4 +84,4 @@ while True:
         resp += w + " "
     resp = resp.strip()
 
-    print("BOT: ""+resp)
+    print("BOT: "+resp)
