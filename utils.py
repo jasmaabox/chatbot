@@ -23,9 +23,9 @@ def read_pairs(fname, v, speaker=None):
         messages = data['messages']
         messages.reverse()
         for i in range(len(messages)):
-            if i < len(messages)-1 and messages[i]['sender_name'] == speaker and messages[i+1]['sender_name'] != speaker:
-                m1 = clean_word(messages[i]['content'])
-                m2 = clean_word(messages[i+1]['content'])
+            if i < len(messages)-1 and messages[i]['sender_name'] != speaker and messages[i+1]['sender_name'] == speaker:
+                m1 = messages[i]['content']
+                m2 = messages[i+1]['content']
                 v.add_sentence(m1)
                 v.add_sentence(m2)
                 pairs.append( (m1, m2) )

@@ -1,0 +1,17 @@
+{
+	"checkpoint_path":"checkpoint",
+	"convo_path":"data/message_ex.json",
+	"speaker":"Jason Maa",
+	"trim_threshold":3,
+	"teacher_forcing_ratio":1.0,
+	"batch_size":64,
+	"n_iteration":4000,
+	"learning_rate":0.0001,
+	"decoder_lr_ratio":5.0,
+	"clip":50,
+	"hidden_size":500,
+	"n_layers":2,
+	"dropout":0.1,
+	"save_every":500,
+	"max_length":100
+}

@@ -24,11 +24,11 @@ def maskNLLLoss(inp, target, mask):
 
 
 # === MAIN ===
-# extract data
-vocab = Vocab()
-pairs = read_pairs('data/message_ex.json', vocab)
-vocab.trim(3)
 
+# set config
+checkpoint_path = "checkpoint"
+convo_path = "data/message.json"
+speaker = None
 teacher_forcing_ratio = 1.0
 BATCH_SIZE = 64
 n_iteration = 4000
@@ -38,6 +38,33 @@ clip = 50
 HIDDEN_SIZE = 500
 n_layers = 2
 dropout = 0.1
+save_every = 500
+
+try:
+    with open('config.json', 'r') as f:
+        config = json.loads(f.read())
+
+        checkpoint_path = config['checkpoint_path']
+        convo_path = config['convo_path']
+        speaker = config['speaker']
+        teacher_forcing_ratio = config['teacher_forcing_ratio']
+        BATCH_SIZE = config['batch_size']
+        n_iteration = config['n_iteration']
+        learning_rate = config['learning_rate']
+        decoder_lr_ratio = config['decoder_lr_ratio']
+        clip = config['clip']
+        HIDDEN_SIZE = config['hidden_size']
+        n_layers = config['n_layers']
+        dropout = config['dropout']
+        save_every = config['save_every']
+        print("Read config from file.")
+except FileNotFoundError:
+    print("No config file. Using default config.")
+
+# extract data
+vocab = Vocab()
+pairs = read_pairs(convo_path, vocab, speaker=speaker if speaker else None)
+vocab.trim(3)
 
 embedding = nn.Embedding(vocab.size, HIDDEN_SIZE)
 
@@ -119,16 +146,14 @@ decoder = LuongAttnDecoderRNN(DOT_METHOD, embedding, HIDDEN_SIZE, vocab.size, n_
 encoder_optimizer = optim.Adam(encoder.parameters(), lr = learning_rate)
 decoder_optimizer = optim.Adam(decoder.parameters(), lr = learning_rate * decoder_lr_ratio)
 
-print("Initializing...")
 start_iteration = 1
 print_loss = 0
-
 
 # print stats
 print("====== STATS =====")
 print(f"Vocab size:\t{vocab.size}")
 print("==================")
-print("Training...")
+print("Start training...")
 
 training_batches = [pairs2batch(random.sample(pairs, BATCH_SIZE), vocab) for _ in range(n_iteration)]
 
@@ -160,7 +185,7 @@ for iteration in range(start_iteration, n_iteration + 1):
     print(f"Iteration {iteration}\tAverage loss {print_loss_avg}")
 
     # save checkpoint
-    if iteration % 500 == 0:
+    if iteration % save_every == 0:
         torch.save({
             'iteration': iteration,
             'en': encoder.state_dict(),
@@ -168,6 +193,5 @@ for iteration in range(start_iteration, n_iteration + 1):
             'en_opt': encoder_optimizer.state_dict(),
             'de_opt': decoder_optimizer.state_dict(),
             'loss': loss,
-            'vocab_dict': vocab.__dict__,
             'embedding': embedding.state_dict()
-        }, os.path.join('checkpoint', '{}_{}.tar'.format(iteration, 'checkpoint')))
+        }, os.path.join(checkpoint_path, f'{iteration}_checkpoint.tar'))
