@@ -3,6 +3,7 @@ import torch.nn as nn
 
 import numpy as np
 import os
+import pickle
 
 from models import *
 from utils import *
@@ -51,12 +52,13 @@ except FileNotFoundError:
     print("No config file. Using default config.")
 
 # Load checkpoint
-checkpoint = torch.load(os.path.join('checkpoint', f'{n_iteration}_checkpoint.tar'))
+checkpoint = torch.load(os.path.join('checkpoint', f'{n_iteration}_checkpoint.tar'), map_location=device)
 
-# load vocab
-vocab = Vocab()
-pairs = read_pairs(convo_path, vocab, speaker=speaker if speaker else None)
-vocab.trim(trim_threshold)
+try:
+    with open('vocab', 'rb') as f:
+        vocab = pickle.loads(f.read())
+except FileNotFoundError:
+    print("No vocab file found")
 
 # read in embedding
 embedding = nn.Embedding(vocab.size, HIDDEN_SIZE)

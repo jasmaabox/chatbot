@@ -6,6 +6,7 @@ import torch.optim as optim
 
 import random
 import os
+import pickle
 
 from models import *
 from utils import *
@@ -132,6 +133,10 @@ vocab = Vocab()
 pairs = read_pairs(convo_path, vocab, speaker=speaker if speaker else None)
 vocab.trim(trim_threshold)
 
+with open('vocab', 'wb') as f:
+    f.write(pickle.dumps(vocab))
+    f.close()
+
 embedding = nn.Embedding(vocab.size, HIDDEN_SIZE)
 
 # Load current checkpoint
@@ -152,7 +157,7 @@ print_loss = 0
 
 if max_iter > 1:
     print(f"Loading checkpoint from {start_iteration}")
-    checkpoint = torch.load(os.path.join(checkpoint_path, f"{start_iteration}_checkpoint.tar"))
+    checkpoint = torch.load(os.path.join(checkpoint_path, f"{start_iteration}_checkpoint.tar"), map_location=device)
 
     encoder.load_state_dict(checkpoint['en'])
     encoder.eval()

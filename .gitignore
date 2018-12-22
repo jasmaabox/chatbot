@@ -106,3 +106,4 @@ venv.bak/
 # my stuff
 /data
 /checkpoint
+vocab
