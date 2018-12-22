@@ -75,7 +75,7 @@ searcher = GreedySearchDecoder(encoder, decoder)
 
 # Run chatbot
 while True:
-    sentence = input('> ')
+    sentence = clean_words(input('> '))
     words = evaluate(encoder, decoder, searcher, vocab, sentence, max_length=max_length)
     resp = ""
     for w in words:
@@ -84,4 +84,4 @@ while True:
         resp += w + " "
     resp = resp.strip()
 
-    print("BOT: ""+resp)
+    print("BOT: "+resp)

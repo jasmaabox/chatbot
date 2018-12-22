@@ -5,9 +5,11 @@ import numpy as np
 import re
 import random
 
-def clean_word(s):
-    """ Strips words to alphanumeric """
-    return re.sub(r'[^a-zA-Z0-9_ ]+', '', s.lower())
+def clean_words(s):
+    """ Clean sentences of unusual words """
+    s = s.lower().split(" ")
+    s = list(filter(lambda x: not re.match(r'[a-zA-Z0-9?!\'\.]+$', x) == None, s))
+    return " ".join(s)
 
 def read_pairs(fname, v, speaker=None):
     """ Reads in conversational pairs from FB message dump """
@@ -23,11 +25,12 @@ def read_pairs(fname, v, speaker=None):
         messages.reverse()
         for i in range(len(messages)):
             if i < len(messages)-1 and messages[i]['sender_name'] != speaker and messages[i+1]['sender_name'] == speaker:
-                m1 = messages[i]['content']
-                m2 = messages[i+1]['content']
-                v.add_sentence(m1)
-                v.add_sentence(m2)
-                pairs.append( (m1, m2) )
+                m1 = clean_words(messages[i]['content'])
+                m2 = clean_words(messages[i+1]['content'])
+                if len(m1) > 0 and len(m2) > 0:
+                    v.add_sentence(m1)
+                    v.add_sentence(m2)
+                    pairs.append( (m1, m2) )
     return pairs
 
 def read_embeds(fname, vocab, embed_dim_size):
